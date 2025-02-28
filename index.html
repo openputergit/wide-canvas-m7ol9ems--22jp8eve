@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floor Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://unpkg.com/konva@9.2.3/konva.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-4 text-gray-800">Floor Planner</h1>
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Tools Panel -->
+                <div class="w-full md:w-1/4 bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold mb-3">Tools</h2>
+                    <div class="space-y-3">
+                        <button onclick="addRoom()" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                            <i class="bi bi-plus-square"></i> Add Room
+                        </button>
+                        <button onclick="addDoor()" class="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">
+                            <i class="bi bi-door-closed"></i> Add Door
+                        </button>
+                        <button onclick="addWindow()" class="w-full bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600">
+                            <i class="bi bi-window"></i> Add Window
+                        </button>
+                        <button onclick="clearCanvas()" class="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600">
+                            <i class="bi bi-trash"></i> Clear All
+                        </button>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-md font-semibold mb-2">Properties</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-sm">Width (m)</label>
+                                <input type="number" id="widthInput" class="w-full border rounded p-1" value="5">
+                            </div>
+                            <div>
+                                <label class="block text-sm">Height (m)</label>
+                                <input type="number" id="heightInput" class="w-full border rounded p-1" value="4">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Area -->
+                <div class="w-full md:w-3/4">
+                    <div id="canvas-container" class="bg-white border-2 border-gray-300 rounded-lg">
+                        <!-- Konva canvas will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let stage;
+        let layer;
+        let selectedShape = null;
+
+        // Initialize Konva Stage
+        window.onload = function() {
+            stage = new Konva.Stage({
+                container: 'canvas-container',
+                width: document.getElementById('canvas-container').offsetWidth,
+                height: 600
+            });
+
+            layer = new Konva.Layer();
+            stage.add(layer);
+
+            // Make stage responsive
+            window.addEventListener('resize', function() {
+                stage.width(document.getElementById('canvas-container').offsetWidth);
+            });
+        };
+
+        function addRoom() {
+            const width = Number(document.getElementById('widthInput').value) * 50; // Scale meters to pixels
+            const height = Number(document.getElementById('heightInput').value) * 50;
+
+            const room = new Konva.Rect({
+                x: 50,
+                y: 50,
+                width: width,
+                height: height,
+                fill: '#f0f9ff',
+                stroke: '#2563eb',
+                strokeWidth: 2,
+                draggable: true
+            });
+
+            // Add resize handles
+            addResizeHandles(room);
+
+            layer.add(room);
+            layer.draw();
+        }
+
+        function addDoor() {
+            const door = new Konva.Rect({
+                x: 100,
+                y: 100,
+                width: 40,
+                height: 5,
+                fill: '#22c55e',
+                draggable: true,
+                rotation: 0
+            });
+
+            door.on('dblclick', function() {
+                this.rotation(this.rotation() + 90);
+                layer.draw();
+            });
+
+            layer.add(door);
+            layer.draw();
+        }
+
+        function addWindow() {
+            const window = new Konva.Rect({
+                x: 100,
+                y: 100,
+                width: 30,
+                height: 5,
+                fill: '#eab308',
+                draggable: true,
+                rotation: 0
+            });
+
+            window.on('dblclick', function() {
+                this.rotation(this.rotation() + 90);
+                layer.draw();
+            });
+
+            layer.add(window);
+            layer.draw();
+        }
+
+        function addResizeHandles(room) {
+            const handles = [];
+            const positions = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+
+            positions.forEach(pos => {
+                const handle = new Konva.Circle({
+                    radius: 6,
+                    fill: '#2563eb',
+                    draggable: true
+                });
+
+                handle.position = pos;
+                handles.push(handle);
+                layer.add(handle);
+
+                handle.on('dragmove', function() {
+                    updateRoomSize(room, handles);
+                });
+            });
+
+            function updateHandlePositions() {
+                handles.forEach(handle => {
+                    const roomPos = room.position();
+                    switch(handle.position) {
+                        case 'topLeft':
+                            handle.position({x: roomPos.x, y: roomPos.y});
+                            break;
+                        case 'topRight':
+                            handle.position({x: roomPos.x + room.width(), y: roomPos.y});
+                            break;
+                        case 'bottomLeft':
+                            handle.position({x: roomPos.x, y: roomPos.y + room.height()});
+                            break;
+                        case 'bottomRight':
+                            handle.position({x: roomPos.x + room.width(), y: roomPos.y + room.height()});
+                            break;
+                    }
+                });
+            }
+
+            room.on('dragmove', updateHandlePositions);
+            updateHandlePositions();
+        }
+
+        function updateRoomSize(room, handles) {
+            const topLeft = handles.find(h => h.position === 'topLeft');
+            const bottomRight = handles.find(h => h.position === 'bottomRight');
+
+            const newWidth = bottomRight.x() - topLeft.x();
+            const newHeight = bottomRight.y() - topLeft.y();
+
+            room.width(newWidth);
+            room.height(newHeight);
+            room.position({x: topLeft.x(), y: topLeft.y()});
+
+            layer.draw();
+        }
+
+        function clearCanvas() {
+            layer.destroyChildren();
+            layer.draw();
+        }
+
+        // Save floor plan to database
+        async function saveFloorPlan() {
+            const floorPlanData = {
+                appSlug: 'floor-planner-123',
+                action: 'create',
+                collection: 'floorplans',
+                data: {
+                    rooms: layer.children.map(shape => ({
+                        type: shape.className,
+                        x: shape.x(),
+                        y: shape.y(),
+                        width: shape.width(),
+                        height: shape.height(),
+                        rotation: shape.rotation()
+                    }))
+                }
+            };
+
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer oOqnyBDkFFfJ25Ihl0QtAo0PWgu1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(floorPlanData)
+                });
+                const data = await response.json();
+                console.log('Floor plan saved:', data);
+            } catch (error) {
+                console.error('Error saving floor plan:', error);
+            }
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
